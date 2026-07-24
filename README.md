@@ -1,7 +1,22 @@
-# ⚽ Pelada — app para gerenciar peladas
+# ⚽ Pelada — Gestor de Jogos de Futebol
 
-App web (React + Vite + Firebase) para organizar jogos de futebol entre amigos:
-fila por chegada, sorteio de times, artilharia, votação, mensalidade, clima e mais.
+![React](https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=flat&logo=firebase&logoColor=black)
+
+> App completo para organizar peladas entre amigos — da fila de chegada ao hall da fama.
+
+Organize jogos de futebol entre amigos com **mais de 20 telas**: fila por chegada, sorteio de
+times equilibrados, artilharia, votação de destaques, controle de mensalidade e caixa,
+cronômetro de partida, mapa do local, clima e estatísticas por temporada.
+
+🔗 **Demo ao vivo:** _em breve_ (após o deploy, cole o link aqui)
+
+<!--
+📸 DICA (Tomás): adicione um print ou GIF do app aqui — é o que mais chama recrutador.
+   Coloque a imagem numa pasta "docs" (ex: docs/screenshot.png) e descomente a linha abaixo.
+-->
+<!-- ![Tela do Pelada](docs/screenshot.png) -->
 
 ---
 
