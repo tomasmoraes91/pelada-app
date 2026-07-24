@@ -1,0 +1,16 @@
+node_modules
+dist
+.firebase
+*.log
+.DS_Store
+
+# Variáveis de ambiente / segredos
+.env
+.env.local
+
+# Sistema
+Thumbs.db
+desktop.ini
+
+# Config local do Claude Code
+.claude/settings.local.json

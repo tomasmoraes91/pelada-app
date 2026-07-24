@@ -1,0 +1,140 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function logado() { return request.auth != null; }
+
+    match /peladas/{peladaId} {
+      function pelada() { return get(/databases/$(database)/documents/peladas/$(peladaId)).data; }
+      function ehPresidente() { return logado() && request.auth.uid == pelada().presidenteUid; }
+      function ehGestor() {
+        return ehPresidente() ||
+          (logado() && request.auth.uid in pelada().adminUids);
+      }
+      function podeVerCaixa() {
+        let cfg = pelada().get('configCaixa', 'presidente');
+        return cfg == 'todos' ? logado()
+             : cfg == 'admins' ? ehGestor()
+             : ehPresidente();
+      }
+      function podeAvaliar() {
+        let cfg = pelada().get('configNiveis', 'presidente');
+        return cfg == 'todos' ? logado()
+             : cfg == 'admins' ? ehGestor()
+             : ehPresidente();
+      }
+      // Faz parte do elenco desta pelada (tem cadastro).
+      function ehMembro() {
+        return logado() &&
+          exists(/databases/$(database)/documents/peladas/$(peladaId)/jogadores/$(request.auth.uid));
+      }
+      // Quem pode lançar partidas (gols/resultado/sorteio): presidente + admins;
+      // e, se o presidente liberar "todos", qualquer MEMBRO do elenco.
+      function podeLancar() {
+        return ehGestor() ||
+          (pelada().get('configPartidas', 'admins') == 'todos' && ehMembro());
+      }
+
+      // Qualquer logado lê os dados da pelada; só gestor edita config.
+      allow read: if logado();
+      // Quem cria vira o presidente (não dá pra criar em nome de outro).
+      allow create: if logado()
+                    && request.resource.data.presidenteUid == request.auth.uid;
+      allow update: if ehGestor()
+        // O destinatário da transferência aceita (vira presidente) ou recusa
+        // (limpa o convite) — só pode mexer nesses dois campos.
+        || (logado()
+            && pelada().get('transferenciaPresidencia', {}).get('paraUid', '') == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['presidenteUid', 'transferenciaPresidencia'])
+            && (request.resource.data.presidenteUid == request.auth.uid
+                || request.resource.data.presidenteUid == resource.data.presidenteUid));
+      // Só o presidente remove a pelada inteira.
+      allow delete: if ehPresidente();
+
+      match /jogadores/{uid} {
+        allow read: if logado();
+        // O próprio usuário cria seu cadastro (status pendente).
+        allow create: if logado() && request.auth.uid == uid
+                      && request.resource.data.status == 'pendente';
+        // Gestor faz tudo. Quem pode lançar partidas (membro "todos") grava
+        // estatísticas, mas NÃO mexe em status/nível/mensalidade (isso é do gestor).
+        // O próprio jogador edita só seu perfil; avaliadores mexem em nível/avaliações
+        // (e, dentro de avaliações, só na PRÓPRIA entrada).
+        allow update: if ehGestor()
+          || (podeLancar()
+              && request.resource.data.status == resource.data.status
+              && request.resource.data.get('nivel', 3) == resource.data.get('nivel', 3)
+              && request.resource.data.get('mensalidadePaga', false) == resource.data.get('mensalidadePaga', false))
+          || (request.auth.uid == uid
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['nome', 'emoji', 'posicao', 'numero']))
+          // O próprio jogador registra a chegada: +1 em chegadas e 0/+1 em
+          // pontualidades (evita inflar a estatística).
+          || (request.auth.uid == uid
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['chegadas', 'pontualidades'])
+              && request.resource.data.chegadas == resource.data.get('chegadas', 0) + 1
+              && request.resource.data.get('pontualidades', 0) >= resource.data.get('pontualidades', 0)
+              && request.resource.data.get('pontualidades', 0) <= resource.data.get('pontualidades', 0) + 1)
+          || (podeAvaliar() && request.auth.uid != uid
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['nivel', 'avaliacoes'])
+              && request.resource.data.get('avaliacoes', {})
+                   .diff(resource.data.get('avaliacoes', {}))
+                   .affectedKeys().hasOnly([request.auth.uid]));
+        // Gestor remove do elenco, menos o presidente (não orfana a pelada).
+        allow delete: if ehGestor() && uid != pelada().presidenteUid;
+      }
+
+      match /sessoes/{sessaoId} {
+        allow read: if logado();
+        // Jogador só consegue se incluir na presença/fila;
+        // quem pode lançar partidas faz o resto (sortear, resultado...).
+        allow create, delete: if ehGestor();
+        allow update: if podeLancar()
+          // Jogador se inclui na presença/fila, marca "só goleiro", ou confirma
+          // presença antecipada (vou / não vou) — campos seguros pro próprio uso.
+          || (logado()
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['presencaConfirmada', 'filaOrdenada', 'goleirosFixos',
+                             'presencaAntecipada', 'naoVou', 'presencaNoHorario']));
+
+        // Votação: só membros do elenco registram voto.
+        match /votacao/{doc} {
+          allow read: if logado();
+          allow write: if ehMembro();
+        }
+        // Log de eventos (gols/assist/desarmes): só quem pode lançar partidas.
+        match /eventos/{ev} {
+          allow read: if logado();
+          allow write: if podeLancar();
+        }
+      }
+
+      // Freguesia: confrontos entre jogadores (escrita ao encerrar partida).
+      match /confrontos/{parId} {
+        allow read: if logado();
+        allow write: if podeLancar();
+      }
+
+      // Parcerias: companheiros de time (escrita ao encerrar partida).
+      match /parcerias/{parId} {
+        allow read: if logado();
+        allow write: if podeLancar();
+      }
+
+      // Caixa: visibilidade segue configCaixa; só gestor com acesso lança.
+      match /caixa/{mes} {
+        allow read: if podeVerCaixa();
+        allow write: if ehGestor() && podeVerCaixa();
+      }
+
+      // Hall da Fama: todos leem; só o presidente encerra a temporada.
+      match /hallDaFama/{ano} {
+        allow read: if logado();
+        allow write: if ehPresidente();
+      }
+    }
+  }
+}
