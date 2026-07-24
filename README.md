@@ -10,7 +10,7 @@ Organize jogos de futebol entre amigos com **mais de 20 telas**: fila por chegad
 times equilibrados, artilharia, votação de destaques, controle de mensalidade e caixa,
 cronômetro de partida, mapa do local, clima e estatísticas por temporada.
 
-🔗 **Demo ao vivo:** _em breve_ (após o deploy, cole o link aqui)
+🔗 **Demo ao vivo:** **<https://meucolete-ba954.web.app/>**
 
 <!--
 📸 DICA (Tomás): adicione um print ou GIF do app aqui — é o que mais chama recrutador.
