@@ -12,12 +12,6 @@ cronômetro de partida, mapa do local, clima e estatísticas por temporada.
 
 🔗 **Ver online:** **<https://meucolete-ba954.web.app/>**
 
-<!--
-📸 DICA (Tomás): adicione um print ou GIF do app aqui — é o que mais chama recrutador.
-   Coloque a imagem numa pasta "docs" (ex: docs/screenshot.png) e descomente a linha abaixo.
--->
-<!-- ![Tela do Pelada](docs/screenshot.png) -->
-
 ---
 
 ## 🚀 Como hospedar no Firebase (passo a passo)
